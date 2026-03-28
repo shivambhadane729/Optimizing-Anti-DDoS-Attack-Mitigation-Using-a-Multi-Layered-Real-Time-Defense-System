@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anti-ddos-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: anti-ddos-backend
+  template:
+    metadata:
+      labels:
+        app: anti-ddos-backend
+    spec:
+      containers:
+      - name: backend
+        # Replaced dynamically by kustomize
+        image: backend-image
+        ports:
+        - containerPort: 5000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: cloudsql-secret
+              key: database-url
+        - name: ML_SERVICE_URL
+          value: "http://ml-service:8000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  selector:
+    app: anti-ddos-backend
+  ports:
+  - protocol: TCP
+    port: 5000
+    targetPort: 5000

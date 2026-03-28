@@ -1,0 +1,86 @@
+name: Build and Deploy to GKE
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GAR_LOCATION: asia-south1
+  GKE_CLUSTER: anti-ddos-cluster
+  GKE_ZONE: asia-south1-a
+  REPOSITORY: anti-ddos-repo
+  IMAGE_BACKEND: backend
+  IMAGE_FRONTEND: frontend
+  IMAGE_ML_SERVICE: ml-service
+
+jobs:
+  setup-build-publish-deploy:
+    name: Setup, Build, Publish, and Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - id: auth
+      name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+
+    - name: Configure Docker for Artifact Registry
+      run: |-
+        gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev
+
+    - name: Get GKE Credentials
+      uses: google-github-actions/get-gke-credentials@v2
+      with:
+        cluster_name: ${{ env.GKE_CLUSTER }}
+        location: ${{ env.GKE_ZONE }}
+
+    # BUILD & PUSH BACKEND
+    - name: Build and Push Backend
+      run: |-
+        docker build -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_BACKEND }}:${{ github.sha }} ./backend
+        docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_BACKEND }}:${{ github.sha }}
+
+    # BUILD & PUSH FRONTEND (Assuming GKE deployment instead of raw Cloud Storage)
+    - name: Build and Push Frontend
+      run: |-
+        docker build -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_FRONTEND }}:${{ github.sha }} ./frontend
+        docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_FRONTEND }}:${{ github.sha }}
+
+    # BUILD & PUSH ML SERVICE
+    - name: Build and Push ML Service
+      run: |-
+        docker build -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_ML_SERVICE }}:${{ github.sha }} ./ml_service
+        docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_ML_SERVICE }}:${{ github.sha }}
+
+    # DEPLOY TO GKE
+    - name: Render Kustomize manifests and Deploy
+      run: |-
+        cd k8s
+        # Download kustomize
+        curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+        
+        # Inject the new dynamic GAR image paths into the deployment configurations
+        ./kustomize edit set image backend-image=${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_BACKEND }}:${{ github.sha }}
+        ./kustomize edit set image frontend-image=${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_FRONTEND }}:${{ github.sha }}
+        ./kustomize edit set image ml-service-image=${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_ML_SERVICE }}:${{ github.sha }}
+        
+        # Apply the configurations
+        ./kustomize build . | kubectl apply -f -
+        
+        # Rollout status
+        kubectl rollout status deployment/anti-ddos-backend
+        kubectl rollout status deployment/ml-service
