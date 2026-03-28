@@ -49,12 +49,18 @@ async def lifespan(app: FastAPI):
 
     # Inject dummy servers
     app.state.load_balancer.servers["http://localhost:8001"] = {
-        "stats": {"cpu": 42.5, "ram": 68.2},
-        "status": "healthy"
+        "status": "healthy",
+        "failures": 0,
+        "last_check": time.time(),
+        "added_time": time.time(),
+        "stats": {"cpu_usage": 42.5, "memory_usage": 68.2, "response_time": 10, "uptime": 0}
     }
     app.state.load_balancer.servers["http://localhost:8002"] = {
-        "stats": {"cpu": 37.0, "ram": 55.1},
-        "status": "healthy"
+        "status": "healthy",
+        "failures": 0,
+        "last_check": time.time(),
+        "added_time": time.time(),
+        "stats": {"cpu_usage": 37.0, "memory_usage": 55.1, "response_time": 15, "uptime": 0}
     }
 
     logger.info("✅ Lifespan startup complete")
@@ -86,10 +92,7 @@ ALLOWED_ORIGINS = [
 ]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000", 
-        "http://127.0.0.1:3000"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -98,7 +101,7 @@ app.add_middleware(
 # Trusted hosts middleware
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1"]
+    allowed_hosts=["*"]
 )
 
 # Include API routers
