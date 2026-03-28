@@ -138,6 +138,11 @@ if __name__ == "__main__":
         http="httptools",
         log_level="info"
     )
+@app.get("/")
+def read_root():
+    """Root endpoint explicitly required for Google Cloud Load Balancer (GCLB) Health Checks to return 200 OK."""
+    return {"status": "healthy", "service": "anti-ddos-backend", "message": "GKE Backend Active"}
+
 @app.get("/server-health")
 def server_health():
     cpu = psutil.cpu_percent(interval=None)

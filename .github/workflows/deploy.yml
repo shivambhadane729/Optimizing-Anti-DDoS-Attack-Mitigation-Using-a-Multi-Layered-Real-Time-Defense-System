@@ -82,6 +82,6 @@ jobs:
         # Apply the configurations
         ./kustomize build . | kubectl apply -f -
         
-        # Rollout status
-        kubectl rollout status deployment/anti-ddos-backend
-        kubectl rollout status deployment/ml-service
+        # Rollout status (with explicitly bounded timeouts to prevent CI hanging)
+        kubectl rollout status deployment/anti-ddos-backend --timeout=5m
+        kubectl rollout status deployment/ml-service --timeout=5m
