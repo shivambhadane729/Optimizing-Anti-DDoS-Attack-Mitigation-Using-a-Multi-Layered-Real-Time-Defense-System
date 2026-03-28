@@ -1,45 +1,44 @@
+# Optimizing Anti-DDoS Attack Mitigation Using a Multi-Layered Real-Time Defense System 🛡️☁️
 
-Optimizing Anti-DDoS Attack Mitigation Using a Multi-Layered Real-Time Defense System
+## 📖 Project Overview
+This project implements a comprehensive, cloud-native defense architecture designed to intelligently detect, mitigate, and divert Distributed Denial-of-Service (DDoS) attacks in real-time. 
 
-🛡️ Overview
-This project implements a comprehensive, multi-layered real-time defense system designed to effectively detect, mitigate, and prevent Distributed Denial-of-Service (DDoS) attacks. By integrating cutting-edge technologies like Machine Learning (ML) for anomaly detection, traffic filtering, and dynamic load balancing, the system provides a robust, scalable, and resilient solution. The primary goal is to maintain high service availability and operational stability even under intense malicious traffic surges.
+Traditional single-layer defenses collapse under sudden, multi-vector DDoS attacks. This system prevents service downtime by employing proactive **Machine Learning** (to detect anomalies instantly), dynamic load balancing (to absorb traffic spikes), and intelligent rate throttling and IP blacklisting—ensuring legitimate users always maintain high service availability even during severe attacks.
 
-✨ Key Features
-Our defense system is built upon the following core components, each serving as a critical defense layer:
+## 🚀 Cloud-Native Architecture & Tech Stack
 
-🧠 ML-Based Anomaly Detection:
-Utilizes the Isolation Forest algorithm for unsupervised learning to profile normal traffic and swiftly detect subtle or sudden abnormal traffic patterns indicative of a DDoS attack (e.g., volumetric, protocol, or application-layer attacks).
+The entire system has been migrated from a local monolithic application to a highly scalable **Microservice Architecture** deployed on **Google Cloud Platform (GCP)**.
 
-This layer enables proactive defense before an attack escalates.
+### 🛠️ Core Services
+* **Frontend Dashboard**: React.js (Material-UI, Chart.js)
+* **API Backend**: FastAPI (Python, Uvicorn, SQLAlchemy)
+* **ML Detection Service**: Python (Scikit-learn, Pandas, Joblib) - *Standalone microservice running Random Forest & Isolation Forest on UNSW-NB15 datasets.*
+* **Database**: Google Cloud SQL (PostgreSQL)
 
-⏱ Rate Limiting & Throttling:
+### ☁️ Google Cloud Platform Capabilities Used
+* **Container Orchestration**: **Google Kubernetes Engine (GKE)** to orchestrate and automatically scale our dockerized microservices.
+* **Security & Edge Filtering (WAF)**: **Google Cloud Armor** to automatically block malicious source IPs at the highest network edge before they impact backend pods.
+* **Load Balancing**: **Cloud Load Balancing (Ingress)** to distribute incoming public internet traffic evenly across GKE pods.
+* **Container Storage**: **Google Artifact Registry** as the private repository for storing the Docker images.
 
-Implements fine-grained control over incoming traffic (IP address, connection rate, etc.) to control traffic spikes, prevent bot floods, and neutralize low-and-slow DDoS attempts.
+## ⚙️ Automated CI/CD Pipeline
+The project utilizes a hands-free continuous deployment workflow implemented via **GitHub Actions** and **Kustomize**.
+1. **Push**: Code is pushed to the `main` branch.
+2. **Build**: GitHub Actions builds the `frontend`, `backend`, and `ml-service` Docker images.
+3. **Artifact Registry**: Images are securely pushed to GCP Artifact Registry.
+4. **Deploy**: Kustomize dynamically injects the new image tags into our Kubernetes manifests (`k8s/`).
+5. **Rollout**: A rolling update is triggered on the GKE Cluster in `asia-south1`, replacing the old pods with zero downtime.
 
-⚖ Load Balancing (Layer 4/7):
+## 🧠 Multi-Layered Defense Execution Flow
 
-Dynamically distributes incoming requests across multiple backend servers to maximize resource utilization and prevent any single point of failure from being overwhelmed.
+1. **Layer 1: Edge Security (WAF)**
+   Google Cloud Armor intercepts traffic, matching it against known bad IP lists and immediately dropping severe volumetric attacks.
+2. **Layer 2: Load Balancing & Rate Limiting**
+   Surviving traffic hits the GKE Load Balancer and FastAPI `slowapi` rate limiters. Traffic surges are throttled and cleanly distributed across available nodes to prevent CPU exhaustion.
+3. **Layer 3: Real-Time Machine Learning Inspection**
+   Connections are forwarded via internal HTTP to the isolated `ml-service` pod. The traffic profile is queried against the Random Forest ML model to detect subtle low-and-slow Layer 7 attacks that bypassed standard thresholds.
+4. **Layer 4: Reactive Blacklisting & Honeypot Diversion**
+   If the ML engine classifies an IP as malicious, the backend communicates with the host firewalls/OS to permanently drop the IP, while simultaneously diverting the bad connection into isolated Honeypots for threat analysis.
 
-Ensures service continuity and stability during peak traffic, both malicious and legitimate.
-
-🔐 Firewall Integration (iptables):
-
-Leverages low-level, high-performance OS-based packet filtering using iptables (or similar Linux firewall tools).
-
-Enables rapid and automated blocking of malicious IP addresses identified by the ML layer or based on known attack signatures.
-
-🍯 Honeypot Diversion:
-
-Deploys low-interaction honeypots to trap and analyze malicious traffic, gathering threat intelligence, and diverting attack resources away from critical production assets.
-
-📊 Real-Time Monitoring & Dashboard:
-
-A centralized visualization dashboard (e.g., using Grafana/Prometheus) for tracking key metrics:
-
-Traffic volume and type (legitimate vs. flagged).
-
-Attack attempt statistics and mitigation effectiveness.
-
-System resource utilization and load distribution.
-
-
+## 📊 Live Monitoring
+Administrators can log into the React dashboard to view live charts detailing clean requests vs. malicious requests, CPU/RAM stabilization during mitigation, and lists of actively blocked IPs.
