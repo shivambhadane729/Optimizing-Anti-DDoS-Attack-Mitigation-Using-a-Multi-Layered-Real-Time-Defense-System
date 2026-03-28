@@ -19,11 +19,11 @@ spec:
         ports:
         - containerPort: 5000
         env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: cloudsql-secret
-              key: database-url
+        # - name: DATABASE_URL
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: cloudsql-secret
+        #       key: database-url
         - name: ML_SERVICE_URL
           value: "http://ml-service:8000"
 ---
