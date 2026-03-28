@@ -19,6 +19,7 @@ passlib[bcrypt]==1.7.4
 python-dotenv==1.0.0
 
 # Utilities
+slowapi>=0.1.9
 pydantic==2.5.2
 pydantic-settings>=2.1.0
 requests==2.31.0
